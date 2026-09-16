@@ -149,9 +149,32 @@
                 { id: 'I002', barcode: '899987654', name: 'Air Zamzam 1L', buy_price: 100000, sell_price: 150000, dept: 'banat' },
                 { id: 'I003', barcode: '899111222', name: 'Minyak Wangi Non-Alkohol', buy_price: 25000, sell_price: 35000, dept: 'banin' }
             ],
+            // Indikator Ceklis dari File Excel
+            indikator_ceklis: {
+                kasir: [
+                    'Kebersihan area kasir & meja terdisplay rapi',
+                    'Uang modal awal shift sesuai',
+                    'Komputer POS/Kasir menyala normal & jaringan internet stabil',
+                    'Kertas struk dan kantong belanja tersedia cukup',
+                    'Laporan mutasi shift sebelumnya sudah divalidasi'
+                ],
+                gudang: [
+                    'Kebersihan area gudang & lorong bebas hambatan',
+                    'Suhu ruangan penyimpan normal',
+                    'Stok opname harian (random 5 item) sesuai sistem',
+                    'Penerimaan barang dari supplier sudah dicatat di sistem',
+                    'Pengecekan tanggal kadaluarsa (FEFO/FIFO) rak depan aman'
+                ],
+                keuangan: [
+                    'Rekapitulasi setoran kasir hari sebelumnya selesai',
+                    'Pencatatan pengeluaran Petty Cash harian lengkap',
+                    'Pengecekan mutasi bank harian (uang masuk/keluar) valid',
+                    'Bukti transfer & nota tersusun rapi di ordner'
+                ]
+            },
             checklists: [
-                { id: 'C1', date: '2026-09-15', user: 'Akhi Kasir', dept: 'banin', status: 'Selesai', notes: 'Laci aman' },
-                { id: 'C2', date: '2026-09-15', user: 'Ukhti Gudang', dept: 'banat', status: 'Selesai', notes: 'Stok opname harian selesai' }
+                { id: 'C1', date: '2026-09-15', user: 'Akhi Kasir', dept: 'banin', status: '5/5 Selesai', notes: 'Laci aman, struk baru diganti' },
+                { id: 'C2', date: '2026-09-15', user: 'Ukhti Gudang', dept: 'banat', status: '4/5 Selesai', notes: 'Ada 1 barang expired sudah dipisah' }
             ],
             orders: [
                 { id: 'O001', date: '2026-09-15', from: 'kasir_banin', to: 'gudang_banin', item: 'Kurma Ajwa 500g', qty: 10, status: 'Disetujui' },
@@ -237,9 +260,24 @@
                     `;
                     break;
                 case 'checklists':
+                    // Ambil indikator sesuai role (kasir, gudang, atau keuangan)
+                    const roleIndicators = dummyData.indikator_ceklis[currentUser.role] || [];
+                    html += `<div class="mb-2 font-bold text-sm text-gray-800 border-b pb-2">Indikator Ceklis Harian (${currentUser.role.toUpperCase()})</div>`;
+                    
+                    if (roleIndicators.length === 0) {
+                        html += `<div class="text-sm text-red-500 mb-2">Tidak ada indikator khusus untuk role ini.</div>`;
+                    } else {
+                        roleIndicators.forEach((ind, i) => {
+                            html += `
+                            <div class="flex items-start mb-2">
+                                <input type="checkbox" id="chk-${i}" value="${ind}" class="mt-1 mr-3 h-4 w-4 text-emerald-600 rounded border-gray-300 chk-indicator cursor-pointer">
+                                <label for="chk-${i}" class="text-sm text-gray-700 cursor-pointer leading-tight">${ind}</label>
+                            </div>`;
+                        });
+                    }
+
                     html += `
-                        <div><label class="text-sm font-medium">Catatan Ceklis Hari Ini</label><textarea id="frm-notes" class="w-full border p-2 rounded rows="3">${data ? data.notes : ''}</textarea></div>
-                        <div class="text-xs text-gray-500">*Indikator detail akan diunggah via Excel nanti sesuai permintaan. Form ini mencatat status kesiapan.</div>
+                        <div class="mt-4"><label class="text-sm font-medium">Catatan Tambahan</label><textarea id="frm-notes" class="w-full border p-2 rounded rows="3" placeholder="Contoh: AC Gudang mati...">${data ? data.notes : ''}</textarea></div>
                     `;
                     break;
                 case 'price_proposals':
@@ -271,7 +309,24 @@
                 } else if(currentModalContext === 'orders') {
                     newData = { ...newData, item: document.getElementById('frm-item').value, qty: document.getElementById('frm-qty').value, date: new Date().toISOString().split('T')[0], from: currentUser.username, status: 'Menunggu' };
                 } else if(currentModalContext === 'checklists') {
-                    newData = { ...newData, notes: document.getElementById('frm-notes').value, date: new Date().toISOString().split('T')[0], user: currentUser.name, dept: currentUser.dept, status: 'Selesai' };
+                    // Logika simpan Multi-Checkbox (JSON)
+                    const checkboxes = document.querySelectorAll('.chk-indicator');
+                    let completedCount = 0;
+                    
+                    checkboxes.forEach(chk => {
+                        if(chk.checked) completedCount++;
+                    });
+                    
+                    const scoreStatus = `${completedCount}/${checkboxes.length} Selesai`;
+                    
+                    newData = { 
+                        ...newData, 
+                        notes: document.getElementById('frm-notes').value, 
+                        date: new Date().toISOString().split('T')[0], 
+                        user: currentUser.name, 
+                        dept: currentUser.dept, 
+                        status: scoreStatus 
+                    };
                 } else if(currentModalContext === 'price_proposals') {
                     newData = { ...newData, item: document.getElementById('frm-item').value, old_price: document.getElementById('frm-old').value, new_price: document.getElementById('frm-new').value, type: currentUser.role === 'gudang' ? 'Beli' : 'Jual', from: currentUser.role, status: 'Menunggu' };
                 }
@@ -568,8 +623,8 @@
             const cols = [
                 { key: 'date', label: 'Tanggal' },
                 { key: 'user', label: 'Karyawan' },
-                { key: 'notes', label: 'Catatan' },
-                { key: 'status', label: 'Status', format: 'status' }
+                { key: 'status', label: 'Skor Ceklis', format: 'status' },
+                { key: 'notes', label: 'Catatan' }
             ];
             
             // Tampilkan hanya milik sendiri, kecuali kepala toko bisa lihat semua
