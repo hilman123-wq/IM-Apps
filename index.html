@@ -131,7 +131,8 @@
         const SUPABASE_URL = 'https://mizxtztttcbicqynfctb.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1penh0enR0dGNiaWNxeW5mY3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjA5MzksImV4cCI6MjEwNTEzNjkzOX0.LpC9qWCCu8qIPNahZWBz1UtFokLxu9DhemBBYCtgZJU'; 
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // PERBAIKAN: Gunakan window.supabase dan simpan di variabel supabaseClient
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Application State
         let currentUser = null;
@@ -186,7 +187,7 @@
 
             try {
                 // Query ke tabel users
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('username', userIn)
@@ -297,12 +298,12 @@
         async function renderDashboardHome(container) {
             try {
                 // Fetch basic stats
-                let itemQuery = supabase.from('items').select('id', { count: 'exact' });
+                let itemQuery = supabaseClient.from('items').select('id', { count: 'exact' });
                 if (currentUser.department !== 'pusat') itemQuery = itemQuery.eq('department', currentUser.department);
                 const { count: itemsCount } = await itemQuery;
 
-                const { count: ordersCount } = await supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pending');
-                const { count: checklistsCount } = await supabase.from('checklists').select('id', { count: 'exact' }).eq('checklist_date', new Date().toISOString().split('T')[0]);
+                const { count: ordersCount } = await supabaseClient.from('orders').select('id', { count: 'exact' }).eq('status', 'pending');
+                const { count: checklistsCount } = await supabaseClient.from('checklists').select('id', { count: 'exact' }).eq('checklist_date', new Date().toISOString().split('T')[0]);
 
                 container.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in">
@@ -331,8 +332,8 @@
 
         async function renderMasterData(container) {
             try {
-                const { data: items } = await supabase.from('items').select('*').eq('department', currentUser.department).order('created_at', { ascending: false });
-                const { data: suppliers } = await supabase.from('suppliers').select('*').eq('department', currentUser.department).order('created_at', { ascending: false });
+                const { data: items } = await supabaseClient.from('items').select('*').eq('department', currentUser.department).order('created_at', { ascending: false });
+                const { data: suppliers } = await supabaseClient.from('suppliers').select('*').eq('department', currentUser.department).order('created_at', { ascending: false });
 
                 const itemsCols = [
                     { key: 'barcode', label: 'Barcode' },
@@ -358,7 +359,7 @@
 
         async function renderOrdersKasir(container) {
             try {
-                const { data } = await supabase.from('orders')
+                const { data } = await supabaseClient.from('orders')
                     .select('*, items(name)')
                     .eq('from_user_id', currentUser.id)
                     .order('created_at', { ascending: false });
@@ -378,7 +379,7 @@
 
         async function renderOrdersGudang(container) {
             try {
-                const { data } = await supabase.from('orders')
+                const { data } = await supabaseClient.from('orders')
                     .select('*, items(name), users(full_name)')
                     .eq('department', currentUser.department)
                     .order('created_at', { ascending: false });
@@ -409,7 +410,7 @@
 
         async function renderChecklists(container) {
             try {
-                let query = supabase.from('checklists').select('*, users(full_name)').order('checklist_date', { ascending: false });
+                let query = supabaseClient.from('checklists').select('*, users(full_name)').order('checklist_date', { ascending: false });
                 
                 // Kepala lihat semua, yang lain lihat milik sendiri / departemennya (tergantung kebutuhan, disini own data)
                 if (currentUser.role !== 'kepala') {
@@ -432,7 +433,7 @@
 
         async function renderPriceProposals(container) {
              try {
-                const { data } = await supabase.from('price_proposals')
+                const { data } = await supabaseClient.from('price_proposals')
                     .select('*, items(name)')
                     .eq('proposed_by', currentUser.id)
                     .order('created_at', { ascending: false });
@@ -455,7 +456,7 @@
                 // Kepala terima usulan 'sell_price'. Keuangan (di masa depan) terima 'buy_price'.
                 const targetType = currentUser.role === 'kepala' ? 'sell_price' : 'buy_price';
                 
-                const { data } = await supabase.from('price_proposals')
+                const { data } = await supabaseClient.from('price_proposals')
                     .select('*, items(name), users(full_name)')
                     .eq('proposal_type', targetType)
                     .order('created_at', { ascending: false });
@@ -490,7 +491,7 @@
 
         async function renderPrintLabels(container) {
              try {
-                const { data: items } = await supabase.from('items').select('*').eq('department', currentUser.department);
+                const { data: items } = await supabaseClient.from('items').select('*').eq('department', currentUser.department);
                 
                 let html = `<div class="grid grid-cols-2 md:grid-cols-4 gap-4 fade-in">`;
                 (items || []).forEach(item => {
@@ -587,7 +588,7 @@
 
             try {
                 if (id) {
-                    const { data, error } = await supabase.from(context).select('*').eq('id', id).single();
+                    const { data, error } = await supabaseClient.from(context).select('*').eq('id', id).single();
                     if(error) throw error;
                     cachedDataForEdit = data;
                 }
@@ -608,7 +609,7 @@
             let html = '<div class="space-y-4">';
             
             // Reusable dropdown for items
-            const { data: items } = await supabase.from('items').select('id, name').eq('department', currentUser.department);
+            const { data: items } = await supabaseClient.from('items').select('id, name').eq('department', currentUser.department);
             let itemOptions = (items || []).map(i => `<option value="${i.id}" ${data && data.item_id === i.id ? 'selected' : ''}>${i.name}</option>`).join('');
 
             switch(context) {
@@ -708,11 +709,11 @@
                 }
 
                 if (currentEditingId) {
-                    const { error } = await supabase.from(currentModalContext).update(newData).eq('id', currentEditingId);
+                    const { error } = await supabaseClient.from(currentModalContext).update(newData).eq('id', currentEditingId);
                     if (error) throw error;
                     showToast('Data berhasil diperbarui!');
                 } else {
-                    const { error } = await supabase.from(currentModalContext).insert([newData]);
+                    const { error } = await supabaseClient.from(currentModalContext).insert([newData]);
                     if (error) throw error;
                     showToast('Data berhasil ditambahkan!');
                 }
@@ -731,7 +732,7 @@
             try {
                 // Menampilkan loader sementara
                 showLoading();
-                const { error } = await supabase.from(table).delete().eq('id', id);
+                const { error } = await supabaseClient.from(table).delete().eq('id', id);
                 if(error) throw error;
                 
                 showToast('Data berhasil dihapus');
@@ -745,7 +746,7 @@
         async function updateStatus(table, id, newStatus) {
             try {
                 showLoading();
-                const { error } = await supabase.from(table).update({ status: newStatus }).eq('id', id);
+                const { error } = await supabaseClient.from(table).update({ status: newStatus }).eq('id', id);
                 if(error) throw error;
                 
                 showToast(`Status berhasil diubah menjadi: ${newStatus}`);
