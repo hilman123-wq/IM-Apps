@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
@@ -20,6 +22,8 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .loader { border-top-color: #10b981; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-gray-800 antialiased h-screen flex overflow-hidden">
@@ -37,13 +41,18 @@
             </div>
             <div id="modal-footer" class="px-6 py-4 border-t bg-gray-50 flex justify-end gap-2 rounded-b-lg">
                 <button onclick="closeModal()" class="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Batal</button>
-                <button id="modal-submit-btn" class="px-4 py-2 text-white bg-emerald-600 rounded hover:bg-emerald-700">Simpan</button>
+                <button id="modal-submit-btn" class="px-4 py-2 text-white bg-emerald-600 rounded hover:bg-emerald-700 flex items-center">Simpan</button>
             </div>
         </div>
     </div>
 
     <div id="login-view" class="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-800">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm fade-in">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm fade-in relative">
+            <div id="login-loading" class="absolute inset-0 bg-white/80 z-10 hidden flex flex-col items-center justify-center rounded-xl">
+                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+                <p class="text-emerald-700 font-semibold">Menghubungkan ke Supabase...</p>
+            </div>
+
             <div class="text-center mb-8">
                 <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
                     <i class="fas fa-store"></i>
@@ -62,11 +71,6 @@
                     <input type="password" id="password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Masukkan password">
                 </div>
                 <button onclick="handleLogin()" class="w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-medium">Masuk</button>
-            </div>
-
-            <div class="mt-6 p-4 bg-yellow-50 rounded border border-yellow-200 text-xs text-yellow-800">
-                <strong>Akun Demo (User & Pass sama):</strong><br>
-                kepala, keuangan_banin, keuangan_banat, gudang_banin, gudang_banat, kasir_banin, kasir_banat
             </div>
         </div>
     </div>
@@ -97,18 +101,9 @@
             <!-- Header Mobile & Global -->
             <header class="h-16 bg-white border-b flex items-center justify-between px-4 sm:px-6 shrink-0">
                 <div class="flex items-center">
-                    <button class="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none mr-4">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
                     <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <button class="text-gray-400 hover:text-emerald-600 transition">
-                            <i class="fas fa-bell text-xl"></i>
-                            <span class="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 w-2.5 h-2.5 rounded-full"></span>
-                        </button>
-                    </div>
                     <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
                         <i class="fas fa-user"></i>
                     </div>
@@ -122,85 +117,48 @@
             </div>
 
             <!-- Content Area -->
-            <div id="main-content" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            <div id="main-content" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 relative">
                 <!-- Konten dinamis masuk kesini -->
             </div>
         </main>
     </div>
 
     <script>
-        // Data Dummy (Simulasi Database Supabase)
-        const dummyData = {
-            users: [
-                { id: 'u1', username: 'kepala', password: 'kepala', name: 'Bpk. Kepala Toko', role: 'kepala', dept: 'all' },
-                { id: 'u2', username: 'keuangan_banin', password: 'keuangan_banin', name: 'Akhi Keuangan', role: 'keuangan', dept: 'banin' },
-                { id: 'u3', username: 'keuangan_banat', password: 'keuangan_banat', name: 'Ukhti Keuangan', role: 'keuangan', dept: 'banat' },
-                { id: 'u4', username: 'gudang_banin', password: 'gudang_banin', name: 'Akhi Gudang', role: 'gudang', dept: 'banin' },
-                { id: 'u5', username: 'gudang_banat', password: 'gudang_banat', name: 'Ukhti Gudang', role: 'gudang', dept: 'banat' },
-                { id: 'u6', username: 'kasir_banin', password: 'kasir_banin', name: 'Akhi Kasir', role: 'kasir', dept: 'banin' },
-                { id: 'u7', username: 'kasir_banat', password: 'kasir_banat', name: 'Ukhti Kasir', role: 'kasir', dept: 'banat' }
-            ],
-            suppliers: [
-                { id: 'S001', name: 'PT Indofood', contact: '081234567890' },
-                { id: 'S002', name: 'CV Berkah Bersama', contact: '085712345678' }
-            ],
-            items: [
-                { id: 'I001', barcode: '899123456', name: 'Kurma Ajwa 500g', buy_price: 80000, sell_price: 120000, dept: 'banin' },
-                { id: 'I002', barcode: '899987654', name: 'Air Zamzam 1L', buy_price: 100000, sell_price: 150000, dept: 'banat' },
-                { id: 'I003', barcode: '899111222', name: 'Minyak Wangi Non-Alkohol', buy_price: 25000, sell_price: 35000, dept: 'banin' }
-            ],
-            // Indikator Ceklis dari File Excel
-            indikator_ceklis: {
-                kasir: [
-                    'Kebersihan area kasir & meja terdisplay rapi',
-                    'Uang modal awal shift sesuai',
-                    'Komputer POS/Kasir menyala normal & jaringan internet stabil',
-                    'Kertas struk dan kantong belanja tersedia cukup',
-                    'Laporan mutasi shift sebelumnya sudah divalidasi'
-                ],
-                gudang: [
-                    'Kebersihan area gudang & lorong bebas hambatan',
-                    'Suhu ruangan penyimpan normal',
-                    'Stok opname harian (random 5 item) sesuai sistem',
-                    'Penerimaan barang dari supplier sudah dicatat di sistem',
-                    'Pengecekan tanggal kadaluarsa (FEFO/FIFO) rak depan aman'
-                ],
-                keuangan: [
-                    'Rekapitulasi setoran kasir hari sebelumnya selesai',
-                    'Pencatatan pengeluaran Petty Cash harian lengkap',
-                    'Pengecekan mutasi bank harian (uang masuk/keluar) valid',
-                    'Bukti transfer & nota tersusun rapi di ordner'
-                ]
-            },
-            checklists: [
-                { id: 'C1', date: '2026-09-15', user: 'Akhi Kasir', dept: 'banin', status: '5/5 Selesai', notes: 'Laci aman, struk baru diganti' },
-                { id: 'C2', date: '2026-09-15', user: 'Ukhti Gudang', dept: 'banat', status: '4/5 Selesai', notes: 'Ada 1 barang expired sudah dipisah' }
-            ],
-            orders: [
-                { id: 'O001', date: '2026-09-15', from: 'kasir_banin', to: 'gudang_banin', item: 'Kurma Ajwa 500g', qty: 10, status: 'Disetujui' },
-                { id: 'O002', date: '2026-09-16', from: 'kasir_banat', to: 'gudang_banat', item: 'Air Zamzam 1L', qty: 5, status: 'Menunggu' }
-            ],
-            price_proposals: [
-                { id: 'P001', item: 'Kurma Ajwa 500g', old_price: 120000, new_price: 125000, type: 'Jual', from: 'keuangan', to: 'kepala', status: 'Menunggu' },
-                { id: 'P002', item: 'Air Zamzam 1L', old_price: 100000, new_price: 110000, type: 'Beli', from: 'gudang', to: 'keuangan', status: 'Disetujui' }
-            ]
-        };
+        // ==========================================
+        // 1. SETUP KONFIGURASI SUPABASE
+        // ==========================================
+        // GANTI DENGAN URL & ANON KEY DARI DASHBOARD SUPABASE ANDA
+        const SUPABASE_URL = 'https://mizxtztttcbicqynfctb.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1penh0enR0dGNiaWNxeW5mY3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjA5MzksImV4cCI6MjEwNTEzNjkzOX0.LpC9qWCCu8qIPNahZWBz1UtFokLxu9DhemBBYCtgZJU'; 
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Application State
         let currentUser = null;
         let activeMenu = 'dashboard';
         
+        // Modal Variables
+        let currentModalContext = null;
+        let currentEditingId = null;
+        let cachedDataForEdit = null; // Menyimpan sementara data spesifik untuk diedit
+
+        // Template Indikator Ceklis berdasarkan Role
+        const indicatorTemplates = {
+            kasir: ["Membersihkan Toko", "Melayani Konsumen", "Display Barang", "Kedisiplinan", "Pro Aktif"],
+            gudang: ["Cek Stok Gudang", "Cek Surat Jalan", "Melakukan Pembagian Tugas"],
+            keuangan: ["Rekap Harian", "Cek Bukti Bayar", "Laporan Kas"]
+        };
+
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            
             const colors = {
                 success: 'bg-green-100 text-green-800 border-green-200',
                 error: 'bg-red-100 text-red-800 border-red-200',
                 info: 'bg-blue-100 text-blue-800 border-blue-200'
             };
             
-            toast.className = `p-4 rounded-lg border shadow-md flex items-center fade-in ${colors[type]}`;
+            toast.className = `p-4 rounded-lg border shadow-md flex items-center fade-in ${colors[type]} z-50`;
             toast.innerHTML = `<span class="font-medium">${message}</span>`;
             
             container.appendChild(toast);
@@ -210,180 +168,47 @@
             }, 3000);
         }
 
-        // Modal Variables
-        let currentModalContext = null;
-        let currentEditingId = null;
-
-        function openModal(title, context, id = null) {
-            document.getElementById('modal-title').innerText = title;
-            document.getElementById('global-modal').classList.remove('hidden');
-            currentModalContext = context;
-            currentEditingId = id;
-            
-            const body = document.getElementById('modal-body');
-            body.innerHTML = generateFormHtml(context, id);
+        function showLoading() {
+            document.getElementById('main-content').innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10 mb-4"></div>
+                    <p>Memuat data dari Supabase...</p>
+                </div>`;
         }
 
-        function closeModal() {
-            document.getElementById('global-modal').classList.add('hidden');
-            currentModalContext = null;
-            currentEditingId = null;
-        }
-
-        function generateFormHtml(context, id) {
-            let data = null;
-            if (id) {
-                data = dummyData[context].find(item => item.id === id);
-            }
-
-            let html = '<div class="space-y-4">';
-            
-            switch(context) {
-                case 'items':
-                    html += `
-                        <div><label class="text-sm font-medium">Barcode</label><input type="text" id="frm-barcode" class="w-full border p-2 rounded" value="${data ? data.barcode : ''}"></div>
-                        <div><label class="text-sm font-medium">Nama Barang</label><input type="text" id="frm-name" class="w-full border p-2 rounded" value="${data ? data.name : ''}"></div>
-                        <div><label class="text-sm font-medium">Harga Beli</label><input type="number" id="frm-buy" class="w-full border p-2 rounded" value="${data ? data.buy_price : ''}"></div>
-                        <div><label class="text-sm font-medium">Harga Jual</label><input type="number" id="frm-sell" class="w-full border p-2 rounded" value="${data ? data.sell_price : ''}"></div>
-                    `;
-                    break;
-                case 'suppliers':
-                    html += `
-                        <div><label class="text-sm font-medium">Nama Supplier</label><input type="text" id="frm-name" class="w-full border p-2 rounded" value="${data ? data.name : ''}"></div>
-                        <div><label class="text-sm font-medium">Kontak/WA</label><input type="text" id="frm-contact" class="w-full border p-2 rounded" value="${data ? data.contact : ''}"></div>
-                    `;
-                    break;
-                case 'orders':
-                    html += `
-                        <div><label class="text-sm font-medium">Nama Barang (Dari Master)</label><input type="text" id="frm-item" class="w-full border p-2 rounded" value="${data ? data.item : ''}"></div>
-                        <div><label class="text-sm font-medium">Jumlah / Qty</label><input type="number" id="frm-qty" class="w-full border p-2 rounded" value="${data ? data.qty : ''}"></div>
-                    `;
-                    break;
-                case 'checklists':
-                    // Ambil indikator sesuai role (kasir, gudang, atau keuangan)
-                    const roleIndicators = dummyData.indikator_ceklis[currentUser.role] || [];
-                    html += `<div class="mb-2 font-bold text-sm text-gray-800 border-b pb-2">Indikator Ceklis Harian (${currentUser.role.toUpperCase()})</div>`;
-                    
-                    if (roleIndicators.length === 0) {
-                        html += `<div class="text-sm text-red-500 mb-2">Tidak ada indikator khusus untuk role ini.</div>`;
-                    } else {
-                        roleIndicators.forEach((ind, i) => {
-                            html += `
-                            <div class="flex items-start mb-2">
-                                <input type="checkbox" id="chk-${i}" value="${ind}" class="mt-1 mr-3 h-4 w-4 text-emerald-600 rounded border-gray-300 chk-indicator cursor-pointer">
-                                <label for="chk-${i}" class="text-sm text-gray-700 cursor-pointer leading-tight">${ind}</label>
-                            </div>`;
-                        });
-                    }
-
-                    html += `
-                        <div class="mt-4"><label class="text-sm font-medium">Catatan Tambahan</label><textarea id="frm-notes" class="w-full border p-2 rounded rows="3" placeholder="Contoh: AC Gudang mati...">${data ? data.notes : ''}</textarea></div>
-                    `;
-                    break;
-                case 'price_proposals':
-                     html += `
-                        <div><label class="text-sm font-medium">Nama Barang</label><input type="text" id="frm-item" class="w-full border p-2 rounded" value="${data ? data.item : ''}"></div>
-                        <div><label class="text-sm font-medium">Harga Saat Ini</label><input type="number" id="frm-old" class="w-full border p-2 rounded" value="${data ? data.old_price : ''}"></div>
-                        <div><label class="text-sm font-medium">Harga Usulan</label><input type="number" id="frm-new" class="w-full border p-2 rounded" value="${data ? data.new_price : ''}"></div>
-                    `;
-                    break;
-            }
-            html += '</div>';
-            return html;
-        }
-
-        // Handle Form Submit
-        document.getElementById('modal-submit-btn').addEventListener('click', () => {
-            if(!currentModalContext) return;
-            
-            // Generate Random ID for new items
-            const newId = currentEditingId ? currentEditingId : 'ID' + Math.floor(Math.random() * 10000);
-            
-            let newData = { id: newId };
-            
-            try {
-                if(currentModalContext === 'items') {
-                    newData = { ...newData, barcode: document.getElementById('frm-barcode').value, name: document.getElementById('frm-name').value, buy_price: document.getElementById('frm-buy').value, sell_price: document.getElementById('frm-sell').value, dept: currentUser.dept };
-                } else if(currentModalContext === 'suppliers') {
-                    newData = { ...newData, name: document.getElementById('frm-name').value, contact: document.getElementById('frm-contact').value };
-                } else if(currentModalContext === 'orders') {
-                    newData = { ...newData, item: document.getElementById('frm-item').value, qty: document.getElementById('frm-qty').value, date: new Date().toISOString().split('T')[0], from: currentUser.username, status: 'Menunggu' };
-                } else if(currentModalContext === 'checklists') {
-                    // Logika simpan Multi-Checkbox (JSON)
-                    const checkboxes = document.querySelectorAll('.chk-indicator');
-                    let completedCount = 0;
-                    
-                    checkboxes.forEach(chk => {
-                        if(chk.checked) completedCount++;
-                    });
-                    
-                    const scoreStatus = `${completedCount}/${checkboxes.length} Selesai`;
-                    
-                    newData = { 
-                        ...newData, 
-                        notes: document.getElementById('frm-notes').value, 
-                        date: new Date().toISOString().split('T')[0], 
-                        user: currentUser.name, 
-                        dept: currentUser.dept, 
-                        status: scoreStatus 
-                    };
-                } else if(currentModalContext === 'price_proposals') {
-                    newData = { ...newData, item: document.getElementById('frm-item').value, old_price: document.getElementById('frm-old').value, new_price: document.getElementById('frm-new').value, type: currentUser.role === 'gudang' ? 'Beli' : 'Jual', from: currentUser.role, status: 'Menunggu' };
-                }
-
-                if (currentEditingId) {
-                    const idx = dummyData[currentModalContext].findIndex(item => item.id === currentEditingId);
-                    dummyData[currentModalContext][idx] = {...dummyData[currentModalContext][idx], ...newData};
-                    showToast('Data berhasil diperbarui!');
-                } else {
-                    dummyData[currentModalContext].push(newData);
-                    showToast('Data berhasil ditambahkan!');
-                }
-                
-                closeModal();
-                loadView(activeMenu); // Reload current view
-            } catch(e) {
-                showToast('Harap isi semua field dengan benar', 'error');
-            }
-        });
-
-        // Delete Logic
-        function deleteData(context, id) {
-            // Simulasi tanpa alert/confirm bawaan browser
-            dummyData[context] = dummyData[context].filter(item => item.id !== id);
-            showToast('Data berhasil dihapus');
-            loadView(activeMenu);
-        }
-
-        // Action Logic (Setuju/Tolak)
-        function updateStatus(context, id, newStatus) {
-            const idx = dummyData[context].findIndex(item => item.id === id);
-            if(idx !== -1) {
-                dummyData[context][idx].status = newStatus;
-                showToast(`Status diubah menjadi: ${newStatus}`);
-                loadView(activeMenu);
-            }
-        }
-
-        function handleLogin() {
+        async function handleLogin() {
             const userIn = document.getElementById('username').value;
             const passIn = document.getElementById('password').value;
             
-            const user = dummyData.users.find(u => u.username === userIn && u.password === passIn);
-            
-            if (user) {
-                currentUser = user;
+            if(!userIn || !passIn) return showToast('Harap isi semua bidang', 'error');
+
+            document.getElementById('login-loading').classList.remove('hidden');
+
+            try {
+                // Query ke tabel users
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', userIn)
+                    .eq('password', passIn)
+                    .single();
+
+                if (error || !data) throw error || new Error('User tidak ditemukan');
+
+                currentUser = data;
                 document.getElementById('login-view').classList.add('hidden');
                 document.getElementById('dashboard-view').classList.remove('hidden');
                 
-                // Update Sidebar Info
-                document.getElementById('sidebar-user-name').innerText = user.name;
-                document.getElementById('sidebar-user-role').innerText = `Dept: ${user.dept.toUpperCase()} - ${user.role.toUpperCase()}`;
+                document.getElementById('sidebar-user-name').innerText = data.full_name;
+                document.getElementById('sidebar-user-role').innerText = `Dept: ${data.department.toUpperCase()} - ${data.role.toUpperCase()}`;
                 
                 setupDashboard();
-                showToast(`Selamat datang, ${user.name}`);
-            } else {
-                showToast('Username atau password salah!', 'error');
+                showToast(`Selamat datang, ${data.full_name}`);
+            } catch (error) {
+                console.error("Login Error:", error);
+                showToast('Username atau password salah / Koneksi Gagal', 'error');
+            } finally {
+                document.getElementById('login-loading').classList.add('hidden');
             }
         }
 
@@ -397,11 +222,8 @@
 
         function setupDashboard() {
             const nav = document.getElementById('sidebar-nav');
-            let menus = [
-                { id: 'dashboard', icon: 'fa-home', label: 'Dashboard Utama' }
-            ];
+            let menus = [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard Utama' }];
 
-            // Filter menus based on roles
             if (currentUser.role === 'kepala') {
                 menus.push({ id: 'reports', icon: 'fa-chart-bar', label: 'Laporan Karyawan' });
                 menus.push({ id: 'approvals', icon: 'fa-check-circle', label: 'Persetujuan Harga & Vendor' });
@@ -414,7 +236,7 @@
             }
             else if (currentUser.role === 'gudang') {
                 menus.push({ id: 'checklists', icon: 'fa-clipboard-list', label: 'Ceklis Harian' });
-                menus.push({ id: 'orders_manage', icon: 'fa-boxes', label: 'Kelola Order Kasir' });
+                menus.push({ id: 'orders_manage', icon: 'fa-boxes', label: 'Kelola Order & Vendor' });
                 menus.push({ id: 'price_proposals', icon: 'fa-tags', label: 'Pengajuan Harga Beli' });
                 menus.push({ id: 'master_data', icon: 'fa-database', label: 'Master Data (Brg/Spl)' });
                 menus.push({ id: 'reports_upload', icon: 'fa-upload', label: 'Upload Laporan' });
@@ -425,7 +247,6 @@
                 menus.push({ id: 'print_labels', icon: 'fa-print', label: 'Cetak Label Harga' });
             }
 
-            // Render menus
             nav.innerHTML = menus.map(m => `
                 <a href="#" onclick="loadView('${m.id}')" class="flex items-center px-6 py-3 text-emerald-100 hover:bg-emerald-700 hover:text-white transition">
                     <i class="fas ${m.icon} w-6"></i>
@@ -433,7 +254,6 @@
                 </a>
             `).join('');
 
-            // Tampilkan banner pengingat sesuai role
             const banner = document.getElementById('reminder-banner');
             const reminderText = document.getElementById('reminder-text');
             banner.classList.remove('hidden');
@@ -441,7 +261,7 @@
             if (currentUser.role === 'kasir') {
                 reminderText.innerText = "Jangan lupa isi Ceklis Harian dan Orderan Rutin (Minggu & Senin). Laporan Ceklis dikirim tiap tgl 30.";
             } else if (currentUser.role === 'kepala') {
-                banner.classList.add('hidden'); // Kepala tidak perlu pengingat ceklis
+                banner.classList.add('hidden');
             } else {
                 reminderText.innerText = "Harap isi Ceklis Harian. Laporan bulanan maksimal diupload tanggal 3.";
             }
@@ -452,60 +272,259 @@
         function loadView(viewId) {
             activeMenu = viewId;
             const content = document.getElementById('main-content');
-            const title = document.getElementById('page-title');
+            document.getElementById('page-title').innerText = viewId.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
             
-            // Format Title
-            title.innerText = viewId.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            content.innerHTML = ''; // Clear
-            content.classList.add('fade-in');
-            
-            setTimeout(() => content.classList.remove('fade-in'), 300);
+            showLoading(); // Tampilkan loading sebelum fetch Supabase
 
-            // Routing Logic
-            switch(viewId) {
-                case 'dashboard': renderDashboardHome(content); break;
-                case 'master_data': renderMasterData(content); break;
-                case 'orders': renderOrdersKasir(content); break;
-                case 'orders_manage': renderOrdersGudang(content); break;
-                case 'checklists': renderChecklists(content); break;
-                case 'price_proposals': renderPriceProposals(content); break;
-                case 'approvals': renderApprovals(content); break;
-                case 'payments': renderPayments(content); break;
-                case 'print_labels': renderPrintLabels(content); break;
-                case 'reports': 
-                case 'reports_upload': 
-                    renderReportsPlaceholder(content, viewId); break;
-                default: 
-                    content.innerHTML = `<div class="p-6 bg-white rounded shadow text-center">Fitur dalam tahap pengembangan.</div>`;
+            setTimeout(() => {
+                switch(viewId) {
+                    case 'dashboard': renderDashboardHome(content); break;
+                    case 'master_data': renderMasterData(content); break;
+                    case 'orders': renderOrdersKasir(content); break;
+                    case 'orders_manage': renderOrdersGudang(content); break;
+                    case 'checklists': renderChecklists(content); break;
+                    case 'price_proposals': renderPriceProposals(content); break;
+                    case 'approvals': renderApprovals(content); break;
+                    case 'payments': renderPayments(content); break;
+                    case 'print_labels': renderPrintLabels(content); break;
+                    case 'reports': 
+                    case 'reports_upload': renderReportsPlaceholder(content, viewId); break;
+                    default: content.innerHTML = `<div class="p-6 bg-white rounded shadow text-center">Dalam pengembangan.</div>`;
+                }
+            }, 100);
+        }
+
+        async function renderDashboardHome(container) {
+            try {
+                // Fetch basic stats
+                let itemQuery = supabase.from('items').select('id', { count: 'exact' });
+                if (currentUser.department !== 'pusat') itemQuery = itemQuery.eq('department', currentUser.department);
+                const { count: itemsCount } = await itemQuery;
+
+                const { count: ordersCount } = await supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pending');
+                const { count: checklistsCount } = await supabase.from('checklists').select('id', { count: 'exact' }).eq('checklist_date', new Date().toISOString().split('T')[0]);
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-emerald-500">
+                            <h3 class="text-gray-500 text-sm font-medium">Total Barang Aktif</h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2">${itemsCount || 0}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500">
+                            <h3 class="text-gray-500 text-sm font-medium">Orderan Tertunda</h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2">${ordersCount || 0}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-yellow-500">
+                            <h3 class="text-gray-500 text-sm font-medium">Ceklis Selesai Hari Ini</h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2">${checklistsCount || 0}</p>
+                        </div>
+                    </div>
+                    <div class="mt-8 bg-white p-6 rounded-xl shadow-sm fade-in">
+                        <h3 class="text-lg font-bold mb-4">Selamat datang di Panel ${currentUser.role.toUpperCase()} ${currentUser.department.toUpperCase()}</h3>
+                        <p class="text-gray-600">Terhubung langsung ke database Supabase.</p>
+                    </div>
+                `;
+            } catch(e) {
+                container.innerHTML = `<div class="p-4 text-red-500">Gagal memuat dashboard: ${e.message}</div>`;
             }
         }
 
+        async function renderMasterData(container) {
+            try {
+                const { data: items } = await supabase.from('items').select('*').eq('department', currentUser.department).order('created_at', { ascending: false });
+                const { data: suppliers } = await supabase.from('suppliers').select('*').eq('department', currentUser.department).order('created_at', { ascending: false });
 
-        function renderDashboardHome(container) {
-            const statsHtml = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-emerald-500">
-                        <h3 class="text-gray-500 text-sm font-medium">Total Barang (${currentUser.dept})</h3>
-                        <p class="text-3xl font-bold text-gray-800 mt-2">${dummyData.items.filter(i => currentUser.dept === 'all' || i.dept === currentUser.dept).length}</p>
+                const itemsCols = [
+                    { key: 'barcode', label: 'Barcode' },
+                    { key: 'name', label: 'Nama Barang' },
+                    { key: 'buy_price', label: 'Harga Beli', format: 'currency' },
+                    { key: 'sell_price', label: 'Harga Jual', format: 'currency' }
+                ];
+                const suppliersCols = [
+                    { key: 'name', label: 'Nama Supplier' },
+                    { key: 'wa_number', label: 'Kontak (WA)' }
+                ];
+
+                container.innerHTML = `
+                    <div class="space-y-8 fade-in">
+                        ${createTable('Data Barang', itemsCols, items || [], 'items', ['create', 'edit', 'delete'])}
+                        ${createTable('Data Supplier', suppliersCols, suppliers || [], 'suppliers', ['create', 'edit', 'delete'])}
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500">
-                        <h3 class="text-gray-500 text-sm font-medium">Orderan Aktif</h3>
-                        <p class="text-3xl font-bold text-gray-800 mt-2">${dummyData.orders.length}</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-yellow-500">
-                        <h3 class="text-gray-500 text-sm font-medium">Ceklis Harian Selesai</h3>
-                        <p class="text-3xl font-bold text-gray-800 mt-2">${dummyData.checklists.length}</p>
-                    </div>
-                </div>
-                <div class="mt-8 bg-white p-6 rounded-xl shadow-sm">
-                    <h3 class="text-lg font-bold mb-4">Selamat datang di Panel ${currentUser.role.toUpperCase()} ${currentUser.dept.toUpperCase()}</h3>
-                    <p class="text-gray-600">Gunakan menu di samping kiri untuk mengelola data operasional toko Islam Mart Anda. Sistem ini terintegrasi antar departemen Banin dan Banat secara sistematis.</p>
-                </div>
-            `;
-            container.innerHTML = statsHtml;
+                `;
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
         }
 
-        // Generic Table Generator
+        async function renderOrdersKasir(container) {
+            try {
+                const { data } = await supabase.from('orders')
+                    .select('*, items(name)')
+                    .eq('from_user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                // Map relasi items
+                const mappedData = data?.map(d => ({...d, item_name: d.items?.name, date: d.created_at.split('T')[0] })) || [];
+                
+                const cols = [
+                    { key: 'date', label: 'Tanggal' },
+                    { key: 'item_name', label: 'Barang' },
+                    { key: 'quantity', label: 'Qty' },
+                    { key: 'status', label: 'Status', format: 'status' }
+                ];
+                container.innerHTML = `<div class="fade-in">${createTable('Histori Order ke Gudang', cols, mappedData, 'orders', ['create', 'delete'])}</div>`;
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function renderOrdersGudang(container) {
+            try {
+                const { data } = await supabase.from('orders')
+                    .select('*, items(name), users(full_name)')
+                    .eq('department', currentUser.department)
+                    .order('created_at', { ascending: false });
+
+                const mappedData = data?.map(d => ({
+                    ...d, 
+                    item_name: d.items?.name, 
+                    user_name: d.users?.full_name,
+                    date: d.created_at.split('T')[0] 
+                })) || [];
+                
+                const cols = [
+                    { key: 'date', label: 'Tanggal' },
+                    { key: 'user_name', label: 'Pemesan' },
+                    { key: 'item_name', label: 'Barang' },
+                    { key: 'quantity', label: 'Qty' },
+                    { key: 'status', label: 'Status', format: 'status' }
+                ];
+                
+                const customActions = [
+                    { label: 'Setujui', color: 'green', fn: 'updateStatus', arg: 'approved' },
+                    { label: 'Tolak', color: 'red', fn: 'updateStatus', arg: 'rejected' }
+                ];
+
+                container.innerHTML = `<div class="fade-in">${createTable('Kelola Orderan (Kasir / Vendor)', cols, mappedData, 'orders', ['create'], customActions)}</div>`;
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function renderChecklists(container) {
+            try {
+                let query = supabase.from('checklists').select('*, users(full_name)').order('checklist_date', { ascending: false });
+                
+                // Kepala lihat semua, yang lain lihat milik sendiri / departemennya (tergantung kebutuhan, disini own data)
+                if (currentUser.role !== 'kepala') {
+                    query = query.eq('user_id', currentUser.id);
+                }
+
+                const { data } = await query;
+                const mappedData = data?.map(d => ({...d, user_name: d.users?.full_name })) || [];
+
+                const cols = [
+                    { key: 'checklist_date', label: 'Tanggal' },
+                    { key: 'user_name', label: 'Karyawan' },
+                    { key: 'score', label: 'Skor Ceklis', format: 'status' },
+                    { key: 'notes', label: 'Catatan' }
+                ];
+
+                container.innerHTML = `<div class="fade-in">${createTable('Laporan Ceklis Harian', cols, mappedData, 'checklists', ['create', 'delete'])}</div>`;
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function renderPriceProposals(container) {
+             try {
+                const { data } = await supabase.from('price_proposals')
+                    .select('*, items(name)')
+                    .eq('proposed_by', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                const mappedData = data?.map(d => ({...d, item_name: d.items?.name })) || [];
+                
+                const cols = [
+                    { key: 'item_name', label: 'Barang' },
+                    { key: 'proposal_type', label: 'Jenis (Buy/Sell)' },
+                    { key: 'old_price', label: 'Harga Lama', format: 'currency' },
+                    { key: 'new_price', label: 'Harga Baru', format: 'currency' },
+                    { key: 'status', label: 'Status', format: 'status' }
+                ];
+                container.innerHTML = `<div class="fade-in">${createTable('Riwayat Pengajuan Harga', cols, mappedData, 'price_proposals', ['create', 'delete'])}</div>`;
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function renderApprovals(container) {
+            try {
+                // Kepala terima usulan 'sell_price'. Keuangan (di masa depan) terima 'buy_price'.
+                const targetType = currentUser.role === 'kepala' ? 'sell_price' : 'buy_price';
+                
+                const { data } = await supabase.from('price_proposals')
+                    .select('*, items(name), users(full_name)')
+                    .eq('proposal_type', targetType)
+                    .order('created_at', { ascending: false });
+
+                const mappedData = data?.map(d => ({...d, item_name: d.items?.name, user_name: d.users?.full_name })) || [];
+                
+                const cols = [
+                    { key: 'user_name', label: 'Pengaju' },
+                    { key: 'item_name', label: 'Barang' },
+                    { key: 'new_price', label: 'Harga Baru', format: 'currency' },
+                    { key: 'status', label: 'Status', format: 'status' }
+                ];
+                
+                const actions = [
+                    { label: 'Setuju', color: 'green', fn: 'updateStatus', arg: 'approved' },
+                    { label: 'Tolak', color: 'red', fn: 'updateStatus', arg: 'rejected' }
+                ];
+
+                container.innerHTML = `<div class="fade-in">${createTable('Persetujuan Masuk', cols, mappedData, 'price_proposals', [], actions)}</div>`;
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+        
+        async function renderPayments(container) {
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center fade-in">
+                    <i class="fas fa-file-invoice-dollar text-5xl text-emerald-300 mb-4"></i>
+                    <h3 class="text-lg font-bold mb-2">Modul Pembayaran Supplier & Cetak Nota</h3>
+                    <p class="text-gray-500 mb-4">Pilih tagihan dari gudang untuk dilakukan pembayaran.</p>
+                    <button class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700" onclick="showToast('Simulasi Cetak Nota Berhasil', 'info')">Cetak Bukti Bayar</button>
+                </div>`;
+        }
+
+        async function renderPrintLabels(container) {
+             try {
+                const { data: items } = await supabase.from('items').select('*').eq('department', currentUser.department);
+                
+                let html = `<div class="grid grid-cols-2 md:grid-cols-4 gap-4 fade-in">`;
+                (items || []).forEach(item => {
+                    html += `
+                        <div class="border-2 border-dashed border-gray-300 p-4 flex flex-col items-center justify-center bg-white rounded cursor-pointer hover:border-emerald-500" onclick="showToast('Label ${item.name} dikirim ke printer!', 'success')">
+                            <i class="fas fa-barcode text-3xl mb-2 text-gray-700"></i>
+                            <p class="text-xs text-center font-bold">${item.name}</p>
+                            <p class="text-sm font-bold text-emerald-600">Rp ${Number(item.sell_price).toLocaleString('id-ID')}</p>
+                            <button class="mt-2 text-xs bg-gray-200 px-2 py-1 rounded w-full">Print</button>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+                container.innerHTML = html;
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function renderReportsPlaceholder(container, type) {
+            const title = type === 'reports' ? 'Laporan Karyawan & Bulanan' : 'Upload Laporan Bulanan';
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center fade-in">
+                    <i class="fas fa-file-excel text-6xl text-emerald-500 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">${title}</h3>
+                    <p class="text-gray-500 text-center max-w-md mb-6">Integrasikan Storage Supabase disini untuk mengupload format Laporan Neraca, Laba Rugi, dll.</p>
+                    ${type === 'reports_upload' 
+                        ? `<button class="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 shadow flex items-center" onclick="showToast('Fitur Storage Supabase belum disetting.')"><i class="fas fa-upload mr-2"></i> Pilih File Laporan</button>`
+                        : `<div class="space-x-2">
+                            <button class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700" onclick="showToast('Unduh')"><i class="fas fa-download mr-1"></i> Laporan</button>
+                           </div>`
+                    }
+                </div>
+            `;
+        }
+
         function createTable(title, columns, data, context, actions = ['edit', 'delete'], customActions = []) {
             let html = `
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
@@ -531,10 +550,10 @@
             data.forEach(row => {
                 html += `<tr class="hover:bg-gray-50">`;
                 columns.forEach(col => {
-                    let val = row[col.key];
-                    if(col.format === 'currency') val = 'Rp ' + parseInt(val).toLocaleString('id-ID');
+                    let val = row[col.key] || '-';
+                    if(col.format === 'currency') val = 'Rp ' + Number(val).toLocaleString('id-ID');
                     if(col.format === 'status') {
-                        let color = val === 'Selesai' || val === 'Disetujui' ? 'bg-green-100 text-green-800' : (val === 'Ditolak' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
+                        let color = (val === 'Selesai' || val === 'approved') ? 'bg-green-100 text-green-800' : (val === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
                         val = `<span class="px-2 py-1 rounded text-xs font-medium ${color}">${val}</span>`;
                     }
                     html += `<td class="px-6 py-3">${val}</td>`;
@@ -542,14 +561,11 @@
                 
                 if(actions.length > 0 || customActions.length > 0) {
                     html += `<td class="px-6 py-3 text-right space-x-2">`;
-                    
                     customActions.forEach(btn => {
                          html += `<button onclick="${btn.fn}('${context}', '${row.id}', '${btn.arg || ''}')" class="text-xs px-2 py-1 rounded bg-${btn.color}-100 text-${btn.color}-700 hover:bg-${btn.color}-200">${btn.label}</button>`;
                     });
-
-                    if(actions.includes('edit')) html += `<button onclick="openModal('Edit Data', '${context}', '${row.id}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>`;
-                    if(actions.includes('delete')) html += `<button onclick="deleteData('${context}', '${row.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>`;
-                    
+                    if(actions.includes('edit')) html += `<button onclick="openModal('Edit Data', '${context}', '${row.id}')" class="text-blue-500 hover:text-blue-700 px-1"><i class="fas fa-edit"></i></button>`;
+                    if(actions.includes('delete')) html += `<button onclick="deleteData('${context}', '${row.id}')" class="text-red-500 hover:text-red-700 px-1"><i class="fas fa-trash"></i></button>`;
                     html += `</td>`;
                 }
                 html += `</tr>`;
@@ -559,165 +575,185 @@
             return html;
         }
 
-        // View: Master Data (Gudang)
-        function renderMasterData(container) {
-            const itemsCols = [
-                { key: 'barcode', label: 'Barcode' },
-                { key: 'name', label: 'Nama Barang' },
-                { key: 'buy_price', label: 'Harga Beli', format: 'currency' },
-                { key: 'sell_price', label: 'Harga Jual', format: 'currency' }
-            ];
-            // Filter by department
-            const myItems = dummyData.items.filter(i => i.dept === currentUser.dept);
+        async function openModal(title, context, id = null) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('global-modal').classList.remove('hidden');
+            currentModalContext = context;
+            currentEditingId = id;
+            cachedDataForEdit = null;
             
-            const suppliersCols = [
-                { key: 'name', label: 'Nama Supplier' },
-                { key: 'contact', label: 'Kontak (WA)' }
-            ];
+            const body = document.getElementById('modal-body');
+            body.innerHTML = '<div class="text-center py-4"><i class="fas fa-circle-notch fa-spin text-emerald-600"></i> Memuat form...</div>';
 
-            container.innerHTML = `
-                <div class="space-y-8">
-                    ${createTable('Data Barang (' + currentUser.dept.toUpperCase() + ')', itemsCols, myItems, 'items', ['create', 'edit', 'delete'])}
-                    ${createTable('Data Supplier', suppliersCols, dummyData.suppliers, 'suppliers', ['create', 'edit', 'delete'])}
-                </div>
-            `;
+            try {
+                if (id) {
+                    const { data, error } = await supabase.from(context).select('*').eq('id', id).single();
+                    if(error) throw error;
+                    cachedDataForEdit = data;
+                }
+                body.innerHTML = await generateFormHtml(context, cachedDataForEdit);
+            } catch (e) {
+                body.innerHTML = `<div class="text-red-500">Error memuat data: ${e.message}</div>`;
+            }
         }
 
-        // View: Orders (Kasir)
-        function renderOrdersKasir(container) {
-            const cols = [
-                { key: 'date', label: 'Tanggal' },
-                { key: 'item', label: 'Barang' },
-                { key: 'qty', label: 'Qty' },
-                { key: 'status', label: 'Status', format: 'status' }
-            ];
-            const myOrders = dummyData.orders.filter(o => o.from === currentUser.username);
-            
-            container.innerHTML = createTable('Histori Order ke Gudang', cols, myOrders, 'orders', ['create', 'delete']);
+        function closeModal() {
+            document.getElementById('global-modal').classList.add('hidden');
+            currentModalContext = null;
+            currentEditingId = null;
+            cachedDataForEdit = null;
         }
 
-        // View: Orders Manage (Gudang)
-        function renderOrdersGudang(container) {
-            const cols = [
-                { key: 'date', label: 'Tanggal' },
-                { key: 'from', label: 'Dari Kasir' },
-                { key: 'item', label: 'Barang' },
-                { key: 'qty', label: 'Qty' },
-                { key: 'status', label: 'Status', format: 'status' }
-            ];
-            // Filter orderan yang ditujukan ke gudang departemen ini
-            const incomingOrders = dummyData.orders.filter(o => o.to === currentUser.username);
+        async function generateFormHtml(context, data) {
+            let html = '<div class="space-y-4">';
             
-            const customActions = [
-                { label: 'Setujui', color: 'green', fn: 'updateStatus', arg: 'Disetujui' },
-                { label: 'Kirim', color: 'blue', fn: 'updateStatus', arg: 'Sedang Dikirim' },
-                { label: 'Selesai', color: 'gray', fn: 'updateStatus', arg: 'Selesai' },
-                { label: 'Tolak', color: 'red', fn: 'updateStatus', arg: 'Ditolak' }
-            ];
+            // Reusable dropdown for items
+            const { data: items } = await supabase.from('items').select('id, name').eq('department', currentUser.department);
+            let itemOptions = (items || []).map(i => `<option value="${i.id}" ${data && data.item_id === i.id ? 'selected' : ''}>${i.name}</option>`).join('');
 
-            container.innerHTML = createTable('Kelola Orderan Kasir', cols, incomingOrders, 'orders', [], customActions);
+            switch(context) {
+                case 'items':
+                    html += `
+                        <div><label class="text-sm font-medium">Barcode</label><input type="text" id="frm-barcode" class="w-full border p-2 rounded" value="${data ? data.barcode : ''}"></div>
+                        <div><label class="text-sm font-medium">Nama Barang</label><input type="text" id="frm-name" class="w-full border p-2 rounded" value="${data ? data.name : ''}"></div>
+                        <div><label class="text-sm font-medium">Harga Beli</label><input type="number" id="frm-buy" class="w-full border p-2 rounded" value="${data ? data.buy_price : ''}"></div>
+                        <div><label class="text-sm font-medium">Harga Jual</label><input type="number" id="frm-sell" class="w-full border p-2 rounded" value="${data ? data.sell_price : ''}"></div>
+                    `;
+                    break;
+                case 'suppliers':
+                    html += `
+                        <div><label class="text-sm font-medium">Nama Supplier</label><input type="text" id="frm-name" class="w-full border p-2 rounded" value="${data ? data.name : ''}"></div>
+                        <div><label class="text-sm font-medium">Kontak/WA</label><input type="text" id="frm-contact" class="w-full border p-2 rounded" value="${data ? data.wa_number : ''}"></div>
+                    `;
+                    break;
+                case 'orders':
+                    html += `
+                        <div><label class="text-sm font-medium">Pilih Barang</label>
+                            <select id="frm-item_id" class="w-full border p-2 rounded"><option value="">-- Pilih Barang --</option>${itemOptions}</select>
+                        </div>
+                        <div><label class="text-sm font-medium">Jumlah / Qty</label><input type="number" id="frm-qty" class="w-full border p-2 rounded" value="${data ? data.quantity : ''}"></div>
+                    `;
+                    break;
+                case 'checklists':
+                    const roles = indicatorTemplates[currentUser.role] || [];
+                    html += `<div class="mb-2 font-bold text-sm text-gray-800 border-b pb-2">Indikator Ceklis Harian (${currentUser.role.toUpperCase()})</div>`;
+                    
+                    // Parse existing JSONB indicators if editing
+                    let savedIndicators = data && data.indicators ? (typeof data.indicators === 'string' ? JSON.parse(data.indicators) : data.indicators) : null;
+
+                    roles.forEach((taskName, i) => {
+                        let isChecked = savedIndicators ? savedIndicators.find(ind => ind.task === taskName)?.done : false;
+                        html += `
+                        <div class="flex items-start mb-2">
+                            <input type="checkbox" id="chk-${i}" value="${taskName}" ${isChecked ? 'checked' : ''} class="mt-1 mr-3 h-4 w-4 text-emerald-600 rounded border-gray-300 chk-indicator cursor-pointer">
+                            <label for="chk-${i}" class="text-sm text-gray-700 cursor-pointer leading-tight">${taskName}</label>
+                        </div>`;
+                    });
+
+                    html += `
+                        <div class="mt-4"><label class="text-sm font-medium">Catatan Tambahan</label><textarea id="frm-notes" class="w-full border p-2 rounded rows="3">${data && data.notes ? data.notes : ''}</textarea></div>
+                    `;
+                    break;
+                case 'price_proposals':
+                     html += `
+                        <div><label class="text-sm font-medium">Pilih Barang</label>
+                            <select id="frm-item_id" class="w-full border p-2 rounded"><option value="">-- Pilih Barang --</option>${itemOptions}</select>
+                        </div>
+                        <div><label class="text-sm font-medium">Harga Usulan</label><input type="number" id="frm-new" class="w-full border p-2 rounded" value="${data ? data.new_price : ''}"></div>
+                    `;
+                    break;
+            }
+            html += '</div>';
+            return html;
         }
 
-        // View: Checklists (Semua)
-        function renderChecklists(container) {
-            const cols = [
-                { key: 'date', label: 'Tanggal' },
-                { key: 'user', label: 'Karyawan' },
-                { key: 'status', label: 'Skor Ceklis', format: 'status' },
-                { key: 'notes', label: 'Catatan' }
-            ];
+        document.getElementById('modal-submit-btn').addEventListener('click', async (e) => {
+            if(!currentModalContext) return;
             
-            // Tampilkan hanya milik sendiri, kecuali kepala toko bisa lihat semua
-            const myChecks = currentUser.role === 'kepala' 
-                ? dummyData.checklists 
-                : dummyData.checklists.filter(c => c.user === currentUser.name);
+            const btn = e.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Proses...';
+            btn.disabled = true;
 
-            container.innerHTML = createTable('Laporan Ceklis Harian', cols, myChecks, 'checklists', ['create', 'delete']);
+            let newData = {};
+            
+            try {
+                if(currentModalContext === 'items') {
+                    newData = { barcode: document.getElementById('frm-barcode').value, name: document.getElementById('frm-name').value, buy_price: document.getElementById('frm-buy').value, sell_price: document.getElementById('frm-sell').value, department: currentUser.department };
+                } else if(currentModalContext === 'suppliers') {
+                    newData = { name: document.getElementById('frm-name').value, wa_number: document.getElementById('frm-contact').value, department: currentUser.department };
+                } else if(currentModalContext === 'orders') {
+                    newData = { item_id: document.getElementById('frm-item_id').value, quantity: document.getElementById('frm-qty').value, from_user_id: currentUser.id, department: currentUser.department, order_type: currentUser.role === 'kasir' ? 'kasir_to_gudang' : 'gudang_to_vendor' };
+                } else if(currentModalContext === 'checklists') {
+                    const checkboxes = document.querySelectorAll('.chk-indicator');
+                    let completedCount = 0;
+                    let indicatorsJson = [];
+                    
+                    checkboxes.forEach(chk => {
+                        let isDone = chk.checked;
+                        if(isDone) completedCount++;
+                        indicatorsJson.push({ task: chk.value, done: isDone });
+                    });
+                    
+                    newData = { 
+                        indicators: indicatorsJson,
+                        notes: document.getElementById('frm-notes').value, 
+                        checklist_date: new Date().toISOString().split('T')[0], 
+                        user_id: currentUser.id, 
+                        department: currentUser.department, 
+                        score: `${completedCount}/${checkboxes.length} Selesai` 
+                    };
+                } else if(currentModalContext === 'price_proposals') {
+                    newData = { item_id: document.getElementById('frm-item_id').value, new_price: document.getElementById('frm-new').value, proposal_type: currentUser.role === 'gudang' ? 'buy_price' : 'sell_price', proposed_by: currentUser.id };
+                }
+
+                if (currentEditingId) {
+                    const { error } = await supabase.from(currentModalContext).update(newData).eq('id', currentEditingId);
+                    if (error) throw error;
+                    showToast('Data berhasil diperbarui!');
+                } else {
+                    const { error } = await supabase.from(currentModalContext).insert([newData]);
+                    if (error) throw error;
+                    showToast('Data berhasil ditambahkan!');
+                }
+                
+                closeModal();
+                loadView(activeMenu); 
+            } catch(error) {
+                showToast(`Gagal: ${error.message}`, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        async function deleteData(table, id) {
+            try {
+                // Menampilkan loader sementara
+                showLoading();
+                const { error } = await supabase.from(table).delete().eq('id', id);
+                if(error) throw error;
+                
+                showToast('Data berhasil dihapus');
+                loadView(activeMenu);
+            } catch (error) {
+                showToast(`Gagal hapus: ${error.message}`, 'error');
+                loadView(activeMenu); // Reload to reset state
+            }
         }
 
-        // View: Price Proposals (Gudang & Keuangan)
-        function renderPriceProposals(container) {
-            const cols = [
-                { key: 'item', label: 'Barang' },
-                { key: 'type', label: 'Jenis (Beli/Jual)' },
-                { key: 'old_price', label: 'Harga Lama', format: 'currency' },
-                { key: 'new_price', label: 'Harga Baru', format: 'currency' },
-                { key: 'status', label: 'Status', format: 'status' }
-            ];
-            
-            const myProposals = dummyData.price_proposals.filter(p => p.from === currentUser.role);
-            container.innerHTML = createTable('Riwayat Pengajuan Harga', cols, myProposals, 'price_proposals', ['create', 'delete']);
-        }
-
-        // View: Approvals (Kepala & Keuangan)
-        function renderApprovals(container) {
-            const cols = [
-                { key: 'item', label: 'Barang' },
-                { key: 'type', label: 'Jenis' },
-                { key: 'new_price', label: 'Harga Baru', format: 'currency' },
-                { key: 'status', label: 'Status', format: 'status' }
-            ];
-            
-            // Kepala approve usulan Jual dari keuangan. Keuangan approve usulan Beli dari gudang.
-            const targetRole = currentUser.role === 'kepala' ? 'kepala' : 'keuangan';
-            const incoming = dummyData.price_proposals.filter(p => p.to === targetRole);
-            
-            const actions = [
-                { label: 'Setuju', color: 'green', fn: 'updateStatus', arg: 'Disetujui' },
-                { label: 'Tolak', color: 'red', fn: 'updateStatus', arg: 'Ditolak' }
-            ];
-
-            container.innerHTML = createTable('Persetujuan Masuk', cols, incoming, 'price_proposals', [], actions);
-        }
-
-        // View: Payments (Keuangan)
-        function renderPayments(container) {
-            container.innerHTML = `
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-                    <i class="fas fa-file-invoice-dollar text-5xl text-emerald-300 mb-4"></i>
-                    <h3 class="text-lg font-bold mb-2">Modul Pembayaran Supplier & Cetak Nota</h3>
-                    <p class="text-gray-500 mb-4">Pilih tagihan dari gudang untuk dilakukan pembayaran.</p>
-                    <button class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700" onclick="showToast('Simulasi Cetak Nota Berhasil', 'info')">Cetak Bukti Bayar Dummy</button>
-                </div>
-            `;
-        }
-
-        // View: Print Labels (Kasir & Gudang)
-        function renderPrintLabels(container) {
-            const myItems = dummyData.items.filter(i => currentUser.dept === 'all' || i.dept === currentUser.dept);
-            
-            let html = `<div class="grid grid-cols-2 md:grid-cols-4 gap-4">`;
-            myItems.forEach(item => {
-                html += `
-                    <div class="border-2 border-dashed border-gray-300 p-4 flex flex-col items-center justify-center bg-white rounded cursor-pointer hover:border-emerald-500" onclick="showToast('Label ${item.name} dikirim ke printer!', 'success')">
-                        <i class="fas fa-barcode text-3xl mb-2 text-gray-700"></i>
-                        <p class="text-xs text-center font-bold">${item.name}</p>
-                        <p class="text-sm font-bold text-emerald-600">Rp ${item.sell_price.toLocaleString('id-ID')}</p>
-                        <button class="mt-2 text-xs bg-gray-200 px-2 py-1 rounded w-full">Print</button>
-                    </div>
-                `;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-        }
-
-        // View: Reports Placeholder
-        function renderReportsPlaceholder(container, type) {
-            const title = type === 'reports' ? 'Laporan Karyawan & Bulanan' : 'Upload Laporan Bulanan';
-            container.innerHTML = `
-                <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-                    <i class="fas fa-file-excel text-6xl text-emerald-500 mb-4"></i>
-                    <h3 class="text-xl font-bold mb-2">${title}</h3>
-                    <p class="text-gray-500 text-center max-w-md mb-6">Fitur ini memungkinkan pengunggahan dan pengunduhan format laporan seperti Neraca, Laba Rugi, SO Brankas, Ceklis Excel, dll.</p>
-                    ${type === 'reports_upload' 
-                        ? `<button class="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 shadow flex items-center" onclick="showToast('Laporan berhasil diunggah (Simulasi)')"><i class="fas fa-upload mr-2"></i> Pilih File Laporan</button>`
-                        : `<div class="space-x-2">
-                            <button class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700" onclick="showToast('Mengunduh Laporan Mingguan')"><i class="fas fa-download mr-1"></i> Mingguan</button>
-                            <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="showToast('Mengunduh Laporan Bulanan')"><i class="fas fa-download mr-1"></i> Bulanan</button>
-                           </div>`
-                    }
-                </div>
-            `;
+        async function updateStatus(table, id, newStatus) {
+            try {
+                showLoading();
+                const { error } = await supabase.from(table).update({ status: newStatus }).eq('id', id);
+                if(error) throw error;
+                
+                showToast(`Status berhasil diubah menjadi: ${newStatus}`);
+                loadView(activeMenu);
+            } catch (error) {
+                showToast(`Gagal update status: ${error.message}`, 'error');
+                loadView(activeMenu);
+            }
         }
 
     </script>
